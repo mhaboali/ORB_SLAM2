@@ -122,7 +122,9 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
+    string input_seq = std::string(argv[3]);
+    string path = std::string("original_results/CameraTrajectory_") + input_seq.substr(input_seq.size() - 2) + std::string(".txt");
+    SLAM.SaveTrajectoryKITTI(path);
 
     return 0;
 }

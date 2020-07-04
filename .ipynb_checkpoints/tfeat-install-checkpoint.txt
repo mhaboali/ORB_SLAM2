@@ -1,0 +1,4 @@
+conda create -n tfeat-py3 python=3.6
+conda install pytorch torchvision cudatoolkit=10.2 -c pytorch
+pip install python-opencv tqdm --user
+export PYTHONPATH=/home/h/anaconda3/envs/tfeat-py3/lib/python3.6/site-packages

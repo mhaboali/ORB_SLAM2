@@ -25,14 +25,12 @@ tfeat.load_state_dict(torch.load(os.path.join(models_path,net_name+".params")))
 # tfeat.cuda()
 tfeat.eval()
 
-def run_tfeat(kp1,kp2):
+def run_tfeat(kp1):
     desc_tfeat1 = tfeat_utils.describe_opencv(tfeat, img1, kp1, 32,mag_factor)
-    desc_tfeat2 = tfeat_utils.describe_opencv(tfeat, img2, kp2, 32,mag_factor)
    
    desc_tfeat1_mat = mat.Mat.from_array(desc_tfeat1) 
-   desc_tfeat2_mat = mat.Mat.from_array(desc_tfeat2) 
 
-   return desc_tfeat1_mat, desc_tfeat1_mat
+   return desc_tfeat1_mat
 
     
 """     all_good_matches = []

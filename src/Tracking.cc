@@ -268,6 +268,7 @@ void Tracking::Track()
 {
     if(mState==NO_IMAGES_YET)
     {
+        std::cout<<"\n#########\n Beeep init 0 \n###############\n";
         mState = NOT_INITIALIZED;
     }
 
@@ -275,23 +276,31 @@ void Tracking::Track()
 
     // Get Map Mutex -> Map cannot be changed
     unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
+    std::cout<<"\n#########\n Beeep init 1 \n###############\n";
 
     if(mState==NOT_INITIALIZED)
     {
+        std::cout<<"\n#########\n Beeep init 2 \n###############\n";
+        std::cout<<"\n\n$$$$$$$$$$$$$$$\n\n MSENSOR\n%%%%%%%%%%%%%%%%%";
+        std::cout<<mSensor<<endl;
         if(mSensor==System::STEREO || mSensor==System::RGBD)
             StereoInitialization();
         else
             MonocularInitialization();
+        std::cout<<"\n#########\n Beeep init 3 \n###############\n";
 
         mpFrameDrawer->Update(this);
+        std::cout<<"\n#########\n Beeep init 4 \n###############\n";
 
         if(mState!=OK)
             return;
+        std::cout<<"\n#########\n Beeep init 5 \n###############\n";
     }
     else
     {
         // System is initialized. Track Frame.
         bool bOK;
+        std::cout<<"\n#########\n Beeep init 6 \n###############\n";
 
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
         if(!mbOnlyTracking)
@@ -508,6 +517,7 @@ void Tracking::Track()
 
 void Tracking::StereoInitialization()
 {
+    std::cout<<"\n#########\n Beeep Tracking -1 \n###############\n";
     if(mCurrentFrame.N>500)
     {
         // Set Frame pose to the origin
@@ -518,13 +528,19 @@ void Tracking::StereoInitialization()
 
         // Insert KeyFrame in the map
         mpMap->AddKeyFrame(pKFini);
-
+        
+        std::cout<<"\n#########\n Beeep Tracking 0 \n###############\n";
         // Create MapPoints and asscoiate to KeyFrame
         for(int i=0; i<mCurrentFrame.N;i++)
         {
+            std::cout<<"\n#########\n Beeep Tracking 1 \n###############\n";
             float z = mCurrentFrame.mvDepth[i];
+            std::cout<<"\n###############\n";
+            std::cout<<z<<endl;
+            std::cout<<"\n****************\n";
             if(z>0)
             {
+                std::cout<<"\n#########\n Beeep Tracking 2 \n###############\n";
                 cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
                 MapPoint* pNewMP = new MapPoint(x3D,pKFini,mpMap);
                 pNewMP->AddObservation(pKFini,i);

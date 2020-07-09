@@ -44,6 +44,9 @@ ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
+/home/h/anaconda3/envs/build-swig/include/python3.7m
+/opt/ros/melodic/include
+/usr/include/boost/python
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -64,6 +67,7 @@ src/MapDrawer.cc
 src/Optimizer.cc
 src/PnPsolver.cc
 src/Frame.cc
+# src/tfeat-test.cc
 src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc

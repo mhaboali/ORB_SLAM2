@@ -87,6 +87,16 @@ target_link_libraries(Stereo
 ${LIBS}
 )
 
+# Node for stereo camera
+rosbuild_add_executable(Kitti
+src/ros_kitti_seqs.cc
+)
+
+target_link_libraries(Kitti
+${LIBS}
+)
+
+
 # Node for RGB-D camera
 rosbuild_add_executable(RGBD
 src/ros_rgbd.cc

@@ -29,6 +29,7 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include "ORB_SLAM2/cpp_keypoints.h"
 
 #include<opencv2/core/core.hpp>
 
@@ -86,7 +87,7 @@ int main(int argc, char **argv)
         }
 
 
-    ros::NodeHandle nh;
+   
     
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();

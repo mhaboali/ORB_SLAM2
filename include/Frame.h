@@ -31,6 +31,9 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
+#include <ros/ros.h>
+#include "/home/h/vslam_ws/ORB_SLAM2/Examples/ROS/ORB_SLAM2/build/devel/include/ORB_SLAM2/cpp_keypoints.h"
+
 
 namespace ORB_SLAM2
 {
@@ -43,6 +46,8 @@ class KeyFrame;
 class Frame
 {
 public:
+    ros::NodeHandle nh;
+    ros::Publisher kp_pub;
     Frame();
 
     // Copy constructor.

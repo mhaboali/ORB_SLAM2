@@ -46,6 +46,7 @@ add_message_files(
   DIRECTORY msg
   FILES
   cpp_keypoints.msg
+  #py_descriptors.msg
 )
 
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)

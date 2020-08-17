@@ -63,6 +63,10 @@ if __name__ == '__main__':
     # pubs
     # self._head_pub = rospy.Publisher('head_angle', Float64, queue_size=1)
     tfeat_pub = rospy.Publisher('tfeat_descriptors', Float32MultiArray, queue_size=1)
+    # subs
+    kp_sub = rospy.Subscriber('keypoints', cpp_keypoints, kp_cb, queue_size=1) 
+    loop_rate = 1
+
     
     img1 = cv2.imread('/home/h/vslam_ws/ORB_SLAM2/Thirdparty/tfeat/imgs/v_churchill/1.ppm',0) 
     orb = cv2.ORB_create(nfeatures=1500)
@@ -71,25 +75,27 @@ if __name__ == '__main__':
     # print(kp1)
     desc_tfeat1 = tfeat_utils.describe_opencv(tfeat, img1, kp1, 32,mag_factor)
     desc_list = np.ndarray.tolist(desc_tfeat1)
-    desc_list = desc_list.flatten()
-    print(desc_tfeat1.shape)
     desc_msg = Float32MultiArray()
     desc_layout = MultiArrayDimension()
-    desc_layout.label = "desc_w"
-    desc_layout.size = len(desc_list)
-    desc_layout.stride = len(desc_list)
-    desc_msg.layout.dim.append(desc_layout)
-    # desc_layout.label = "desc_h"
-    # desc_layout.size = 128
-    # desc_layout.stride = 128
-    # desc_msg.layout.dim.append(desc_layout)
-    desc_msg.data = desc_list
-    tfeat_pub.publish(desc_msg)
+    desc_msg.layout.dim = []
+    dims = np.array(desc_tfeat1.shape)
+    # desc_tfeat_size = dims.prod()/float(desc_tfeat1.nbytes) 
+    # this is my attempt to normalize the strides size depending on .nbytes. not sure this is correct
+    
+    for i in range(0,dims[0]): #should be rather fast. 
+        # gets the num. of dims of nparray to construct the message
+        print(i)  
+        print("\n###########") 
+        desc_msg.layout.dim.append(MultiArrayDimension())
+        desc_msg.layout.dim[i].size = dims[1]
+        desc_msg.layout.dim[i].stride = 0
+        desc_msg.layout.dim[i].label = 'dim_%d'%i
+    
+    while not rospy.is_shutdown():
+        desc_msg.data = np.frombuffer(desc_tfeat1.tobytes(),'float32') ## serializes
+        tfeat_pub.publish(desc_msg)
+        r = rospy.Rate(loop_rate)
+        
     print("##########\nAfter Tfeat \n#############\n")
-
-    # subs
-    kp_sub = rospy.Subscriber('keypoints', cpp_keypoints, kp_cb, queue_size=1) 
-    loop_rate = 1
-
-    r = rospy.Rate(loop_rate)
+    
     rospy.spin() 

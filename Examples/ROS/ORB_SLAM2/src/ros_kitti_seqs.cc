@@ -26,10 +26,12 @@
 
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
+#include <opencv2/highgui/highgui.hpp>
+
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-#include "ORB_SLAM2/cpp_keypoints.h"
 
 #include<opencv2/core/core.hpp>
 
@@ -43,6 +45,7 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ORB_Kitti");
+    ros::NodeHandle nh;
     ros::start();
 
     if(argc < 4)
@@ -69,14 +72,29 @@ int main(int argc, char **argv)
     cout << endl << "-------" << endl;
     cout << "Start processing sequence ..." << endl;
     cout << "Images in the sequence: " << nImages << endl << endl;   
+    ros::Rate loop_rate(0.5);
 
     // Main loop
     cv::Mat imLeft, imRight;
+    unsigned int msg_count = 0;
     for(int ni=0; ni<nImages; ni++)
     {
         // Read left and right images from file
-        imLeft = cv::imread(vstrImageLeft[ni],CV_LOAD_IMAGE_UNCHANGED);
-        imRight = cv::imread(vstrImageRight[ni],CV_LOAD_IMAGE_UNCHANGED);
+        imLeft = cv::imread(vstrImageLeft[ni],CV_LOAD_IMAGE_GRAYSCALE);
+        imRight = cv::imread(vstrImageRight[ni],CV_LOAD_IMAGE_GRAYSCALE);
+
+        image_transport::ImageTransport it(nh);
+        image_transport::Publisher pubLeft = it.advertise("/image/left", 1);
+        image_transport::Publisher pubRight = it.advertise("/image/right", 1);
+        std_msgs::Header header;
+        header.seq = ni;
+        cout<<header.seq<<endl;
+        header.stamp = ros::Time::now();
+        sensor_msgs::ImagePtr right_msg = cv_bridge::CvImage(header, "bgr8", imRight).toImageMsg();
+        sensor_msgs::ImagePtr left_msg = cv_bridge::CvImage(header, "bgr8", imLeft).toImageMsg();        
+        pubRight.publish(right_msg);        
+        pubLeft.publish(left_msg);        
+
         double tframe = vTimestamps[ni];
 
         if(imLeft.empty())
@@ -117,8 +135,8 @@ int main(int argc, char **argv)
 
         if(ttrack<T)
             usleep((T-ttrack)*1e6);
+        // loop_rate.sleep();
     }
-    ros::spin();
     // Stop all threads
     SLAM.Shutdown();
 
@@ -135,9 +153,10 @@ int main(int argc, char **argv)
 
     // Save camera trajectory
     string input_seq = std::string(argv[3]);
-    string path = std::string("original_results/CameraTrajectory_") + input_seq.substr(input_seq.size() - 2) + std::string(".txt");
+    string path = std::string("tfeat_results/CameraTrajectory_") + input_seq.substr(input_seq.size() - 2) + std::string(".txt");
     SLAM.SaveTrajectoryKITTI(path);
-
+    
+    ros::spin();
     ros::shutdown();
 
     return 0;

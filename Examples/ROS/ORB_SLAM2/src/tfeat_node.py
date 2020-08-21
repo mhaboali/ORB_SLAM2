@@ -15,7 +15,7 @@ from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray, MultiArrayLayout, MultiArrayDimension
 
 sys.path.append('/home/h/vslam_ws/ORB_SLAM2/Examples/ROS/ORB_SLAM2/build/devel/lib/python2.7/dist-packages/ORB_SLAM2')
-from ORB_SLAM2.msg import cpp_keypoints
+# from ORB_SLAM2.msg import cpp_keypoints
 
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # self._head_pub = rospy.Publisher('head_angle', Float64, queue_size=1)
     tfeat_pub = rospy.Publisher('tfeat_descriptors', Float32MultiArray, queue_size=1)
     # subs
-    kp_sub = rospy.Subscriber('keypoints', cpp_keypoints, kp_cb, queue_size=1) 
+    # kp_sub = rospy.Subscriber('keypoints', cpp_keypoints, kp_cb, queue_size=1) 
     loop_rate = 1
 
     

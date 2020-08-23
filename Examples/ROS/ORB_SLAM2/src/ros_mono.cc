@@ -31,24 +31,25 @@
 
 #include"../../../include/System.h"
 
+#include<tfeat_msgs/get_desc.h>
+
 using namespace std;
 
 class ImageGrabber
 {
 public:
-    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
+    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM),
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
-
-    ORB_SLAM2::System* mpSLAM;
+    ORB_SLAM2::System* mpSLAM;    
 };
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "Mono");
     ros::start();
-
-    if(argc != 3)
+    
+    if(argc != 4)
     {
         cerr << endl << "Usage: rosrun ORB_SLAM2 Mono path_to_vocabulary path_to_settings" << endl;        
         ros::shutdown();
@@ -68,8 +69,11 @@ int main(int argc, char **argv)
     // Stop all threads
     SLAM.Shutdown();
 
+    
     // Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    string input_seq = std::string(argv[3]);
+    string path = std::string("tfeat_results/tum_CameraTrajectory_") + input_seq.substr(input_seq.size() - 2) + std::string(".txt");
+    SLAM.SaveKeyFrameTrajectoryTUM(path);
 
     ros::shutdown();
 

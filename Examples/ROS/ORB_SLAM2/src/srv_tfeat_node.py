@@ -14,12 +14,16 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray, MultiArrayLayout, MultiArrayDimension
-
-sys.path.append('/home/h/vslam_ws/ORB_SLAM2/Examples/ROS/ORB_SLAM2/build/devel/lib/python2.7/dist-packages/ORB_SLAM2')
+from cv_bridge.srv import get_desc
+## /home/h/vslam_ws/ORB_SLAM2/Thirdparty/tfeat
+sys.path.append('/home/h/vslam_ws/ORB_SLAM2/Thirdparty/tfeat')
+## sys.path.append('/home/h/vslam_ws/ORB_SLAM2/Examples/ROS/ORB_SLAM2/build/devel/lib/python2.7/dist-packages/ORB_SLAM2')
 # from ORB_SLAM2.msg import cpp_keypoints
 
 from cv_bridge import CvBridge, CvBridgeError
 import message_filters
+
+print(sys.path)
 
 import torchvision as tv
 import phototour
@@ -58,9 +62,11 @@ def run_tfeat(kp1):
 
     return desc_tfeat1
 
-def callback(img_msg):
+def get_tft_desc(req):
     global bridge, tfeat_pub
-    img1 = bridge.imgmsg_to_cv2(img_msg, "mono8")
+    input_img = req.img
+    input_header = req.header
+    img1 = bridge.imgmsg_to_cv2(input_img, "mono8")
     orb = cv2.ORB_create(nfeatures=1500)
     kp1, des1 = orb.detectAndCompute(img1, None)
     mag_factor = 3
@@ -85,7 +91,7 @@ def callback(img_msg):
 
 if __name__ == '__main__':
     rospy.init_node("tfeat_node", anonymous=True)
-    imgLeft_sub = rospy.Subscriber('/camera/image_raw', Image, callback)
-    loop_rate = 1
+    # imgLeft_sub = rospy.Subscriber('/camera/image_raw', Image, callback)
+    get_tfeat_desc = rospy.Service('tfeat/get_desc', get_desc, get_tft_desc)
     
     rospy.spin() 

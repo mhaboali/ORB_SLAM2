@@ -30,8 +30,14 @@
 #include "KeyFrame.h"
 #include "ORBextractor.h"
 
-#include <opencv2/opencv.hpp>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/image_encodings.h>
+#include <cv_bridge/cv_bridge.h>
+
+#include<opencv2/core/core.hpp>
 #include <ros/ros.h>
+#include<tfeat_msgs/get_desc.h>
+#include<std_msgs/MultiFloat32Array.h>
 // #include "/home/h/vslam_ws/ORB_SLAM2/Examples/ROS/ORB_SLAM2/build/devel/include/ORB_SLAM2/cpp_keypoints.h"
 
 
@@ -47,6 +53,9 @@ class Frame
 {
 public:
     ros::NodeHandle nh;
+    ros::ServiceClient          getDescClient;
+    cv_bridge::CvImage img_bridge;
+
     Frame();
 
     // Copy constructor.

@@ -24,3 +24,4 @@ lib/
 *.pyc
 Thirdparty/tfeat/standard_test_images
 Thirdparty/opencv-swig
+corrected_01.bag

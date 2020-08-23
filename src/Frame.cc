@@ -47,7 +47,8 @@ Frame::Frame(const Frame &frame)
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
      mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
-     mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+     mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
+     getDescClient(frame.getDescClient)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -60,7 +61,8 @@ Frame::Frame(const Frame &frame)
 
 Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
-     mpReferenceKF(static_cast<KeyFrame*>(NULL))
+     mpReferenceKF(static_cast<KeyFrame*>(NULL)),
+     getDescClient(nh.serviceClient<tfeat_msgs::get_desc>("tfeat/get_desc"))
 {
     // Frame ID
     mnId=nNextId++;
@@ -74,10 +76,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
-    // ORB extraction
-    // Images publishers
-    
-    //#################################################
+    // ORB extraction    
     thread threadLeft(&Frame::ExtractORB,this,0,imLeft);
     thread threadRight(&Frame::ExtractORB,this,1,imRight);
     threadLeft.join();
@@ -121,7 +120,8 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
 Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
-     mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
+     mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
+     getDescClient(nh.serviceClient<tfeat_msgs::get_desc>("tfeat/get_desc"))
 {
     // Frame ID
     mnId=nNextId++;
@@ -176,7 +176,8 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
 
 Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
-     mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
+     mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
+     getDescClient(nh.serviceClient<tfeat_msgs::get_desc>("tfeat/get_desc"))
 {
     // Frame ID
     mnId=nNextId++;
@@ -249,8 +250,30 @@ void Frame::AssignFeaturesToGrid()
 
 void Frame::ExtractORB(int flag, const cv::Mat &im)
 {
-    if(flag==0)
+    if(flag==0){
         (*mpORBextractorLeft)(im,cv::Mat(),mvKeys,mDescriptors);
+        tfeat_msgs::get_desc srv;
+        sensor_msgs::Image img_msg; // >> message to be sent
+        std_msgs::Header header; // empty header
+
+        header.stamp = ros::Duration(mTimeStamp);
+        img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::MONO8, im);
+        img_bridge.toImageMsg(img_msg); // from cv_bridge to sensor_msgs::Image
+        srv.rquest.img = img_msg;
+        std_msgs::MultiFloat32Array tfeat_desc;
+        try
+        {    if(getDescClient.call(srv)){
+                ROS_INFO("Frame_TimeStamp: %f",mTimeStamp);
+                ROS_INFO("Image_TimeStamp: %f",srv.response.header.stamp.toSec());
+                tfeat_desc = srv.response.desc;
+                
+            }
+        }
+        catch(const std::bad_alloc& e)
+        {
+            std::cout << "Error:" << e.what() << '\n';
+        }
+    }
     else
         (*mpORBextractorRight)(im,cv::Mat(),mvKeysRight,mDescriptorsRight);
 }

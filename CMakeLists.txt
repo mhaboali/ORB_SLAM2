@@ -56,6 +56,7 @@ ${Pangolin_INCLUDE_DIRS}
 /home/h/anaconda3/envs/build-swig/include/python3.7m
 /opt/ros/melodic/include
 /usr/include/boost/python
+/home/h/catkin_ws/devel/include
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)

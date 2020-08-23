@@ -26,9 +26,6 @@
 
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
-#include <image_transport/image_transport.h>
-#include <opencv2/highgui/highgui.hpp>
-
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -39,8 +36,17 @@
 
 using namespace std;
 
-void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
-                vector<string> &vstrImageRight, vector<double> &vTimestamps);
+class ImageGrabber
+{
+public:
+    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
+
+    void GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
+
+    ORB_SLAM2::System* mpSLAM;
+    bool do_rectify;
+    cv::Mat M1l,M2l,M1r,M2r;
+};
 
 int main(int argc, char **argv)
 {
@@ -54,148 +60,74 @@ int main(int argc, char **argv)
         ros::shutdown();
         return 1;
     }    
-    // Retrieve paths to images
-    vector<string> vstrImageLeft;
-    vector<string> vstrImageRight;
-    vector<double> vTimestamps;
-    LoadImages(string(argv[3]), vstrImageLeft, vstrImageRight, vTimestamps);
-
-    const int nImages = vstrImageLeft.size();
 
      // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
 
-    // Vector for tracking time statistics
-    vector<float> vTimesTrack;
-    vTimesTrack.resize(nImages);
-
+    ImageGrabber igb(&SLAM);
+   
     cout << endl << "-------" << endl;
     cout << "Start processing sequence ..." << endl;
-    cout << "Images in the sequence: " << nImages << endl << endl;   
-    ros::Rate loop_rate(0.5);
 
     // Main loop
-    cv::Mat imLeft, imRight;
-    unsigned int msg_count = 0;
-    for(int ni=0; ni<nImages; ni++)
-    {
-        // Read left and right images from file
-        imLeft = cv::imread(vstrImageLeft[ni],CV_LOAD_IMAGE_GRAYSCALE);
-        imRight = cv::imread(vstrImageRight[ni],CV_LOAD_IMAGE_GRAYSCALE);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/image_left", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/image_right", 1);
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
+    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
+    sync.registerCallback(boost::bind(&ImageGrabber::GrabStereo,&igb,_1,_2));
 
-        image_transport::ImageTransport it(nh);
-        image_transport::Publisher pubLeft = it.advertise("/image/left", 1);
-        image_transport::Publisher pubRight = it.advertise("/image/right", 1);
-        std_msgs::Header header;
-        header.seq = ni;
-        cout<<header.seq<<endl;
-        header.stamp = ros::Time::now();
-        sensor_msgs::ImagePtr right_msg = cv_bridge::CvImage(header, "bgr8", imRight).toImageMsg();
-        sensor_msgs::ImagePtr left_msg = cv_bridge::CvImage(header, "bgr8", imLeft).toImageMsg();        
-        pubRight.publish(right_msg);        
-        pubLeft.publish(left_msg);        
+    ros::spin();
 
-        double tframe = vTimestamps[ni];
-
-        if(imLeft.empty())
-        {
-            cerr << endl << "Failed to load image at: "
-                << string(vstrImageLeft[ni]) << endl;
-            return 1;
-        }
-
-
-   
-    
-#ifdef COMPILEDWITHC11
-        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-#else
-        std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
-#endif
-
-        // Pass the images to the SLAM system
-        SLAM.TrackStereo(imLeft,imRight,tframe);
-
-#ifdef COMPILEDWITHC11
-        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-#else
-        std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
-#endif
-
-        double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
-
-        vTimesTrack[ni]=ttrack;
-
-        // Wait to load the next frame
-        double T=0;
-        if(ni<nImages-1)
-            T = vTimestamps[ni+1]-tframe;
-        else if(ni>0)
-            T = tframe-vTimestamps[ni-1];
-
-        if(ttrack<T)
-            usleep((T-ttrack)*1e6);
-        // loop_rate.sleep();
-    }
     // Stop all threads
     SLAM.Shutdown();
-
-    // Tracking time statistics
-    sort(vTimesTrack.begin(),vTimesTrack.end());
-    float totaltime = 0;
-    for(int ni=0; ni<nImages; ni++)
-    {
-        totaltime+=vTimesTrack[ni];
-    }
-    cout << "-------" << endl << endl;
-    cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
-    cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
     string input_seq = std::string(argv[3]);
     string path = std::string("tfeat_results/CameraTrajectory_") + input_seq.substr(input_seq.size() - 2) + std::string(".txt");
     SLAM.SaveTrajectoryKITTI(path);
     
-    ros::spin();
     ros::shutdown();
 
     return 0;
 }
 
-void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
-                vector<string> &vstrImageRight, vector<double> &vTimestamps)
+void ImageGrabber::GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight)
 {
-    ifstream fTimes;
-    string strPathTimeFile = strPathToSequence + "/times.txt";
-    fTimes.open(strPathTimeFile.c_str());
-    while(!fTimes.eof())
+    cout<<"\n####1#######\n";
+    // Copy the ros image message to cv::Mat.
+    cv_bridge::CvImageConstPtr cv_ptrLeft;
+    try
     {
-        string s;
-        getline(fTimes,s);
-        if(!s.empty())
-        {
-            stringstream ss;
-            ss << s;
-            double t;
-            ss >> t;
-            vTimestamps.push_back(t);
-        }
+        cv_ptrLeft = cv_bridge::toCvShare(msgLeft, "mono8");
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
     }
 
-    string strPrefixLeft = strPathToSequence + "/image_0/";
-    string strPrefixRight = strPathToSequence + "/image_1/";
-
-    const int nTimes = vTimestamps.size();
-    vstrImageLeft.resize(nTimes);
-    vstrImageRight.resize(nTimes);
-
-    for(int i=0; i<nTimes; i++)
+    cv_bridge::CvImageConstPtr cv_ptrRight;
+    try
     {
-        stringstream ss;
-        ss << setfill('0') << setw(6) << i;
-        vstrImageLeft[i] = strPrefixLeft + ss.str() + ".png";
-        vstrImageRight[i] = strPrefixRight + ss.str() + ".png";
+        cv_ptrRight = cv_bridge::toCvShare(msgRight, "mono8");
     }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
+    }
+    cout<<"\n#####2######\n";
+    if(do_rectify)
+    {
+        cv::Mat imLeft, imRight;
+        cv::remap(cv_ptrLeft->image,imLeft,M1l,M2l,cv::INTER_LINEAR);
+        cv::remap(cv_ptrRight->image,imRight,M1r,M2r,cv::INTER_LINEAR);
+        mpSLAM->TrackStereo(imLeft,imRight,cv_ptrLeft->header.stamp.toSec());
+    }
+    else
+    {
+        cout<<"\n###3########\n";
+        mpSLAM->TrackStereo(cv_ptrLeft->image,cv_ptrRight->image,cv_ptrLeft->header.stamp.toSec());
+    }
+
 }
-
-
